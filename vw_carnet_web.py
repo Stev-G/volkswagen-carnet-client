@@ -12,9 +12,21 @@ import json
 import sys
 from urlparse import urlsplit
 
+# import libraries
+import lib_mqtt as MQTT
+
+DEBUG = False
+#DEBUG = True
+
+MQTT_TOPIC_IN = "/carnet/#"
+MQTT_TOPIC = "/carnet"
+MQTT_QOS = 0
+
+
 # Login information for the VW CarNet website
 CARNET_USERNAME = ''
 CARNET_PASSWORD = ''
+CARNET_SPIN = ''
 
 HEADERS = { 'Accept': 'application/json, text/plain, */*',
 			'Content-Type': 'application/json;charset=UTF-8',
@@ -135,7 +147,7 @@ def CarNetLogin(s,email, password):
 	return ref_url3
 	
 def CarNetPost(s,url_base,command):
-	print(command)
+	#print(command)
 	r = s.post(url_base + command, headers=HEADERS)
 	return r.content
 	
@@ -145,12 +157,44 @@ def CarNetPostAction(s,url_base,command,data):
 	return r.content
 
 def retrieveCarNetInfo(s,url_base):
+	print(CarNetPost(s,'https://www.volkswagen-car-net.com/portal/group/de/edit-profile/-/profile/get-vehicles-owners-verification', ''))
 	print(CarNetPost(s,url_base, '/-/msgc/get-new-messages'))
 	print(CarNetPost(s,url_base, '/-/vsr/request-vsr'))
 	print(CarNetPost(s,url_base, '/-/vsr/get-vsr'))
 	print(CarNetPost(s,url_base, '/-/cf/get-location'))
 	print(CarNetPost(s,url_base, '/-/vehicle-info/get-vehicle-details'))
 	print(CarNetPost(s,url_base, '/-/emanager/get-emanager'))
+	print(CarNetPost(s,url_base, '/-/rah/get-request-status'))
+	print(CarNetPost(s,url_base, '/-/rah/get-status'))
+	print(CarNetPost(s,url_base, '/-/dimp/get-destinations'))
+	print(CarNetPost(s,url_base, '/-/dimp/get-tours'))
+	print(CarNetPost(s,url_base, '/-/news/get-news'))
+	print(CarNetPost(s,url_base, '/-/rts/get-latest-trip-statistics'))
+	print(CarNetPost(s,url_base, '/-/mainnavigation/load-car-details/WVWZZZ3HZJE506705'))
+	print(CarNetPost(s,url_base, '/-/vehicle-info/get-vehicle-details'))
+	print(CarNetPost(s,url_base, '/-/mainnavigation/get-preferred-dealer'))
+	print(CarNetPost(s,url_base, '/-/ppoi/get-ppoi-list'))
+	print(CarNetPost(s,url_base, '/-/geofence/get-fences'))
+	return 0
+
+def mqtt(s,url_base):
+        MQTT.mqttc.publish(MQTT_TOPIC + '/vehicles-owners-verification', CarNetPost(s,'https://www.volkswagen-car-net.com/portal/group/de/edit-profile/-/profile/get-vehicles-owners-verification', ''), qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/new-messages', CarNetPost(s,url_base, '/-/msgc/get-new-messages') , qos=0, retain=True)
+	# MQTT.mqttc.publish(MQTT_TOPIC + '/request-vsr', CarNetPost(s,url_base, '/-/vsr/request-vsr') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/vsr', CarNetPost(s,url_base, '/-/vsr/get-vsr') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/location', CarNetPost(s,url_base, '/-/cf/get-location') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/vehicle-details', CarNetPost(s,url_base, '/-/vehicle-info/get-vehicle-details') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/emanager', CarNetPost(s,url_base, '/-/emanager/get-emanager') , qos=0, retain=True)
+	# MQTT.mqttc.publish(MQTT_TOPIC + '/request-status', CarNetPost(s,url_base, '/-/rah/get-request-status') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/status', CarNetPost(s,url_base, '/-/rah/get-status') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/destination', CarNetPost(s,url_base, '/-/dimp/get-destinations') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/tours', CarNetPost(s,url_base, '/-/dimp/get-tours') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/news', CarNetPost(s,url_base, '/-/news/get-news') , qos=0, retain=True)
+	# MQTT.mqttc.publish(MQTT_TOPIC + '/lates-trip-statistics', CarNetPost(s,url_base, '/-/rts/get-latest-trip-statistics') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/car-details', CarNetPost(s,url_base, '/-/mainnavigation/load-car-details/WVWZZZ3HZJE506705') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/preferred-dealer', CarNetPost(s,url_base, '/-/mainnavigation/get-preferred-dealer') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/ppoi-list', CarNetPost(s,url_base, '/-/ppoi/get-ppoi-list') , qos=0, retain=True)
+	MQTT.mqttc.publish(MQTT_TOPIC + '/fences', CarNetPost(s,url_base, '/-/geofence/get-fences') , qos=0, retain=True)
 	return 0
 
 def startCharge(s,url_base):
@@ -198,7 +242,44 @@ def stopWindowMelt(s,url_base):
 	}
 	print(CarNetPostAction(s,url_base, '/-/emanager/trigger-windowheating', post_data))
 	return 0
-	
+
+def startRemoteAccessHeating(s,url_base):
+        post_data = {
+		'startMode':'HEATING',
+		'spin':CARNET_SPIN
+        }
+        print(CarNetPostAction(s,url_base, '/-/rah/quick-start', post_data))
+        return 0
+
+def startRemoteAccessVentilation(s,url_base):
+        post_data = {
+		'startMode':'VENTILATION',
+		'spin':CARNET_SPIN
+        }
+        print(CarNetPostAction(s,url_base, '/-/rah/quick-start', post_data))
+        return 0
+
+def stopRemoteAccessHeating(s,url_base):
+        post_data = {
+        }
+        print(CarNetPostAction(s,url_base, '/-/rah/quick-stop', post_data))
+        return 0
+
+def statusReqRemoteAccessHeating(s,url_base):
+        print(CarNetPost(s,url_base, '/-/rah/get-request-status'))
+        return 0
+
+def statusRemoteAccessHeating(s,url_base):
+        print(CarNetPost(s,url_base, '/-/rah/get-status'))
+        return 0
+
+def getVehiclesOwnersVerification(s,url_base):
+        print(CarNetPost(s,'https://www.volkswagen-car-net.com/portal/group/de/edit-profile/-/profile/get-vehicles-owners-verification', ''))
+        return 0
+
+def getVehicleDetails(s,url_base):
+        print(CarNetPost(s,url_base, '/-/vehicle-info/get-vehicle-details'))
+        return 0
 	
 if __name__ == "__main__":
 	s = requests.Session()
@@ -206,6 +287,12 @@ if __name__ == "__main__":
 	if url == '':
 		print("Failed to login")
 		sys.exit()
+
+	# Init MQTT connections
+	MQTT.init()
+	#print 'MQTT initiated'
+	#MQTT.mqttc.on_message = on_message
+	#MQTT.mqttc.subscribe(MQTT_TOPIC_IN, qos=MQTT_QOS)
 
 	if len(sys.argv) != 2:
 		print "Need at least one argument."
@@ -225,12 +312,20 @@ if __name__ == "__main__":
 			startWindowMelt(s,url)
 		elif(sys.argv[1] == "stopWindowMelt"):
 			stopWindowMelt(s,url)
+		elif(sys.argv[1] == "startRemoteAccessHeating"):
+			startRemoteAccessHeating(s,url)
+		elif(sys.argv[1] == "stopRemoteAccessHeating"):
+			stopRemoteAccessHeating(s,url)
+                elif(sys.argv[1] == "getVehicleDetails"):
+                        getVehicleDetails(s,url)
+                elif(sys.argv[1] == "mqtt"):
+                        mqtt(s,url)
 		
 		# Below is the flow the web app is using to determine when action really started
 		# You should look at the notifications until it returns a status JSON like this
 		# {"errorCode":"0","actionNotificationList":[{"actionState":"SUCCEEDED","actionType":"STOP","serviceType":"RBC","errorTitle":null,"errorMessage":null}]}
-		print(CarNetPost(s,url, '/-/msgc/get-new-messages'))
-		print(CarNetPost(s,url, '/-/emanager/get-notifications'))
-		print(CarNetPost(s,url, '/-/msgc/get-new-messages'))
-		print(CarNetPost(s,url, '/-/emanager/get-emanager'))
+		#print(CarNetPost(s,url, '/-/msgc/get-new-messages'))
+		#print(CarNetPost(s,url, '/-/emanager/get-notifications'))
+		#print(CarNetPost(s,url, '/-/msgc/get-new-messages'))
+		#print(CarNetPost(s,url, '/-/emanager/get-emanager'))
 	
