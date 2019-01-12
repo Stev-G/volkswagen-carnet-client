@@ -41,3 +41,5 @@ Send all data to the MQTT broker configured in lib_mqtt:
 ```
 python vw_carnet.py mqtt
 ```
+
+See also [FHEM integration](https://forum.fhem.de/index.php/topic,83090.msg886586.html#msg886586)
