@@ -8,14 +8,14 @@ Clone the Github page and modify the following values in the vw_carnet.py script
 ```
 CARNET_USERNAME = ''
 CARNET_PASSWORD = ''
-CARNET_SPIN = ''
+CARNET_SPIN = '' <- PIN for executing actions like used in your VW app
 ```
 
 Enter the correct MQTT-broker host and port in the lib_mqtt.py:
 
 ```
-MQTT_HOST = "<hostname or IP>"
-MQTT_PORT = <port>
+MQTT_HOST = "<hostname or IP>" <- host where your mqtt broker runs
+MQTT_PORT = <port> <- port of your mqtt service, default is 1883
 ```
 
 # Usage
