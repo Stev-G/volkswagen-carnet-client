@@ -11,6 +11,13 @@ CARNET_PASSWORD = ''
 CARNET_SPIN = ''
 ```
 
+Enter the correct MQTT-broker host and port in the lib_mqtt.py:
+
+```
+MQTT_HOST = "<hostname or IP>"
+MQTT_PORT = <port>
+```
+
 # Usage
 
 Run the script with a argument. The following are supported:
