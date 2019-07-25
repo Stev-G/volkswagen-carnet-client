@@ -65,6 +65,7 @@ def CarNetLogin(s,email, password):
 	if r.status_code != 200:
 		return ""
 	csrf = extract_csrf(r)
+	#print(csrf)
 	
 	# Request login page and get CSRF
 	AUTHHEADERS["Referer"] = base + '/portal'
@@ -74,18 +75,20 @@ def CarNetLogin(s,email, password):
 		return ""
 	responseData = json.loads(r.content)
 	lg_url = responseData.get("loginURL").get("path")
-
+	#print(lg_url)
 	# no redirect so we can get values we look for
 	r = s.get(lg_url, allow_redirects=False, headers=AUTHHEADERS)
 	if r.status_code != 302:
 		return ""
 	ref_url = r.headers.get("location")
+	#print(ref_url)
 	
 	# now get actual login page and get session id and ViewState
 	r = s.get(ref_url, headers=AUTHHEADERS)
 	if r.status_code != 200:
 		return ""
 	view_state = extract_view_state(r)
+	#print(view_state)
 
 	# Login with user details
 	AUTHHEADERS["Faces-Request"] = "partial/ajax"
@@ -105,21 +108,19 @@ def CarNetLogin(s,email, password):
 		'javax.faces.behavior.event': 'action',
 		'javax.faces.partial.ajax': 'true'
 	}
-
 	r = s.post(auth_base + '/ap-login/jsf/login.jsf', data=post_data, headers=AUTHHEADERS)
 	if r.status_code != 200:
 		return ""
 	ref_url = extract_redirect_url(r).replace('&amp;', '&')
-
+	#print(ref_url)
 	# redirect to link from login and extract state and code values
 	r = s.get(ref_url, allow_redirects=False, headers=AUTHHEADERS)
 	if r.status_code != 302:
 		return ""
 	ref_url2 = r.headers.get("location")
-
+	#print(ref_url2)
 	code = extract_code(ref_url2)
 	state = extract_state(ref_url2)
-
 	# load ref page
 	r = s.get(ref_url2, headers=AUTHHEADERS)
 	if r.status_code != 200:
@@ -134,13 +135,12 @@ def CarNetLogin(s,email, password):
 	r = s.post(base + urlsplit(ref_url2).path + '?p_auth=' + state + '&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus', data=post_data, allow_redirects=False, headers=AUTHHEADERS)
 	if r.status_code != 302:
 		return ""
-
 	ref_url3 = r.headers.get("location")
+	#print(ref_url3)
 	r = s.get(ref_url3, headers=AUTHHEADERS)
-
 	#We have a new CSRF
 	csrf = extract_csrf(r)
-
+	# done!!!! we are in at last
 	# Update headers for requests
 	HEADERS["Referer"] = ref_url3
 	HEADERS["X-CSRF-Token"] = csrf
