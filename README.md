@@ -22,23 +22,23 @@ MQTT_PORT = <port> <- port of your mqtt service, default is 1883
 
 Run the script with a argument. The following are supported:
 ```
-python vw_carnet_web.py retrieveCarNetInfo
+python3 vw_carnet_web.py retrieveCarNetInfo
 ```
 
 ```
-python vw_carnet_web.py startClimat
+python3 vw_carnet_web.py startClimat
 ```
 
 ```
-python vw_carnet_web.py stopClimat
+python3 vw_carnet_web.py stopClimat
 ```
 
 ```
-python vw_carnet_web.py startWindowMelt
+python3 vw_carnet_web.py startWindowMelt
 ```
 
 ```
-python vw_carnet_web.py stopWindowMelt
+python3 vw_carnet_web.py stopWindowMelt
 ```
 
 ...
@@ -46,7 +46,7 @@ python vw_carnet_web.py stopWindowMelt
 
 Send all data to the MQTT broker configured in lib_mqtt:
 ```
-python vw_carnet.py mqtt
+python3 vw_carnet.py mqtt
 ```
 
 See also [FHEM integration](https://forum.fhem.de/index.php/topic,83090.msg886586.html#msg886586)
