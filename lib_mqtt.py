@@ -16,7 +16,7 @@ APPNAME = "carnet"
 
 DEBUG = False
 
-MQTT_HOST = "fhem"
+MQTT_HOST = "mediasafe2.fritz.box"
 MQTT_PORT = 1883
 MQTT_CLIENT_ID = APPNAME + "_%d" % os.getpid()
 MQTT_QOS = 0
