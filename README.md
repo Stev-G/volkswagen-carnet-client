@@ -15,23 +15,23 @@ MQTT_PORT = <port> <- port of your mqtt service, default is 1883
 
 Run the script with arguments. If you only own one car in VW we, the vin parameter is obsolete. The following are supported:
 ```
-python3 vw_carnet_web.py -u <username> -p <password> -s <spin> -v <vin> -c retrieveCarNetInfo
+python3 we_connect_client.py -u <username> -p <password> -s <spin> -v <vin> -c retrieveCarNetInfo
 ```
 
 ```
-python3 vw_carnet_web.py  -u <username> -p <password> -s <spin> -v <vin> -c startClimat
+python3 we_connect_client.py  -u <username> -p <password> -s <spin> -v <vin> -c startClimat
 ```
 
 ```
-python3 vw_carnet_web.py  -u <username> -p <password> -s <spin> -v <vin> -c stopClimat
+python3 we_connect_client.py  -u <username> -p <password> -s <spin> -v <vin> -c stopClimat
 ```
 
 ```
-python3 vw_carnet_web.py  -u <username> -p <password> -s <spin> -v <vin> -c startWindowMelt
+python3 we_connect_client.py  -u <username> -p <password> -s <spin> -v <vin> -c startWindowMelt
 ```
 
 ```
-python3 vw_carnet_web.py  -u <username> -p <password> -s <spin> -v <vin> -c stopWindowMelt
+python3 we_connect_client.py  -u <username> -p <password> -s <spin> -v <vin> -c stopWindowMelt
 ```
 
 ...
@@ -39,7 +39,7 @@ python3 vw_carnet_web.py  -u <username> -p <password> -s <spin> -v <vin> -c stop
 
 Send all data to the MQTT broker configured in lib_mqtt:
 ```
-python3 vw_carnet.py -u <username> -p <password> -s <spin> -v <vin> -c mqtt
+python3 we_connect_client.py -u <username> -p <password> -s <spin> -v <vin> -c mqtt
 ```
 
 See also [FHEM integration](https://forum.fhem.de/index.php/topic,83090.msg886586.html#msg886586)
