@@ -1,12 +1,14 @@
 #!/usr/bin/python
 # Script to emulate VW WE Connect web site login and commands to VW car.
 # Author  : Rene Boer
-# Version : 2.5
-# Date    : 4 Oct 2019
+# Version : 2.7
+# Date    : 3 Dec 2019
 
 # Should work on python 2 and 3
 
 # Free for use & distribution
+# V2.7 Ignore certificate check on first Get to work a round an SSL error.
+# V2.6 Check for SPIN command to be authorized. Do not send command if not.
 # V2.5 The commands needing a SPIN are now working.
 #      Added commands for getLatestReport, getAlerts, getGeofences
 #      Fix for remoteUnlock
@@ -19,6 +21,7 @@
 # Thanks to birgersp for a number of cleanups and rewrites. See https://github.com/birgersp/carnet-client
 
 debug = False
+certverify = False
 
 import re
 import requests
@@ -41,18 +44,12 @@ import logging
 # ---- end uncomment
 import argparse
 
-# import libraries
-import lib_mqtt as MQTT
-
-MQTT_TOPIC_IN = "/carnet/#"
-MQTT_TOPIC = "/carnet"
-MQTT_QOS = 0
 
 portal_base_url = 'https://www.portal.volkswagen-we.com'
 
 request_headers = {
     'Accept-Encoding': 'gzip, deflate, br',
-    'Accept-Language': 'de-DE,nl;q=0.7,en;q=0.3',
+    'Accept-Language': 'en-US,nl;q=0.7,en;q=0.3',
     'Accept': 'application/json, text/plain, */*',
     'Content-Type': 'application/json;charset=UTF-8',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101 Firefox/68.0',
@@ -113,7 +110,7 @@ def CarNetLogin(session, email, password):
     # Get initial CSRF from landing page to get login process started.
     # Python Session handles JSESSIONID cookie
     landing_page_url = base_url + '/portal/en_GB/web/guest/home'
-    landing_page_response = session.get(landing_page_url)
+    landing_page_response = session.get(landing_page_url, verify=certverify)
     if landing_page_response.status_code != 200:
         return '', 'Failed getting to portal landing page.'
     csrf = extract_csrf(landing_page_response.text)
@@ -140,7 +137,7 @@ def CarNetLogin(session, email, password):
     auth_request_headers['Referer'] = landing_page_url
     auth_request_headers['X-CSRF-Token'] = csrf
     get_login_url = base_url + '/portal/en_GB/web/guest/home/-/csrftokenhandling/get-login-url'
-    login_page_response = session.post(get_login_url, headers=auth_request_headers)
+    login_page_response = session.post(get_login_url, headers=auth_request_headers, verify=certverify)
     if login_page_response.status_code != 200:
         return '', 'Failed to get login url.'
     login_url = json.loads(login_page_response.text).get('loginURL').get('path')
@@ -154,7 +151,7 @@ def CarNetLogin(session, email, password):
     # Get login form url we are told to use, it will give us a new location.
     # response header location (redirect URL) includes relayState for step 5
     # https://identity.vwgroup.io/oidc/v1/authorize......
-    login_url_response = session.get(login_url, allow_redirects=False, headers=auth_request_headers)
+    login_url_response = session.get(login_url, allow_redirects=False, headers=auth_request_headers, verify=certverify)
     if login_url_response.status_code != 302:
         return '', 'Failed to get authorization page.'
     login_form_url = login_url_response.headers.get('location')
@@ -167,7 +164,7 @@ def CarNetLogin(session, email, password):
     if debug: print ("Step 4 ===========")
     # Get login action url, relay state. hmac token 1 and login CSRF from form contents
     # https://identity.vwgroup.io/signin-service/v1/signin/<client_id>@relayState=<relay_state>
-    login_form_location_response = session.get(login_form_url, headers=auth_request_headers)
+    login_form_location_response = session.get(login_form_url, headers=auth_request_headers, verify=certverify)
     if login_form_location_response.status_code != 200:
         return '', 'Failed to get sign-in page.'
     # We get a SESSION set-cookie here!
@@ -196,7 +193,7 @@ def CarNetLogin(session, email, password):
         '_csrf': login_csrf,
     }
     login_action_url = auth_base_url + '/signin-service/v1/' + client_id + '/login/identifier'
-    login_action_url_response = session.post(login_action_url, data=post_data, headers=auth_request_headers, allow_redirects=True)
+    login_action_url_response = session.post(login_action_url, data=post_data, headers=auth_request_headers, allow_redirects=True, verify=certverify)
     # performs a 303 redirect to https://identity.vwgroup.io/signin-service/v1/<client_id>/login/authenticate?relayState=<relayState>&email=<email>
     # redirected GET returns form used below.
     if login_action_url_response.status_code != 200:
@@ -223,7 +220,7 @@ def CarNetLogin(session, email, password):
         'login': 'true'
     }
     login_action2_url = auth_base_url + '/signin-service/v1/' + client_id + '/login/authenticate'
-    login_post_response = session.post(login_action2_url, data=login_data, headers=auth_request_headers, allow_redirects=True)
+    login_post_response = session.post(login_action2_url, data=login_data, headers=auth_request_headers, allow_redirects=True, verify=certverify)
     # performs a 302 redirect to GET https://identity.vwgroup.io/oidc/v1/oauth/sso?clientId=<client_id>&relayState=<relay_state>&userId=<userID>&HMAC=<...>"
     # then a 302 redirect to GET https://identity.vwgroup.io/consent/v1/users/<userID>/<client_id>?scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=1bc582f3ff177afde55b590af92e17a006f9c532&callback=https://identity.vwgroup.io/oidc/v1/oauth/client/callback&hmac=<.....>
     # then a 302 redirect to https://identity.vwgroup.io/oidc/v1/oauth/client/callback/success?user_id=<userID>&client_id=<client_id>&scopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&consentedScopes=openid%20profile%20birthdate%20nickname%20address%20email%20phone%20cars%20dealers%20mbb&relay_state=<relayState>&hmac=<...>
@@ -248,7 +245,7 @@ def CarNetLogin(session, email, password):
     auth_request_headers['Referer'] = ref2_url
     portlet_data = {'_33_WAR_cored5portlet_code': portlet_code}
     final_login_url = base_url + '/portal/web/guest/complete-login?p_auth=' + state + '&p_p_id=33_WAR_cored5portlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_count=1&_33_WAR_cored5portlet_javax.portlet.action=getLoginStatus'
-    complete_login_response = session.post(final_login_url, data=portlet_data, allow_redirects=False, headers=auth_request_headers)
+    complete_login_response = session.post(final_login_url, data=portlet_data, allow_redirects=False, headers=auth_request_headers, verify=certverify)
     if complete_login_response.status_code != 302:
         return '', 'Failed to post portlet page.'
 
@@ -256,7 +253,7 @@ def CarNetLogin(session, email, password):
     if debug: print ("Step 8 ===========")
     # Get base JSON url for commands 
     base_json_url = complete_login_response.headers.get('location')
-    base_json_response = session.get(base_json_url, headers=auth_request_headers)
+    base_json_response = session.get(base_json_url, headers=auth_request_headers, verify=certverify)
     csrf = extract_csrf(base_json_response.text)
     if base_json_url == '':
         return '', 'Failed to base json url.'
@@ -272,13 +269,13 @@ def CarNetLogin(session, email, password):
 
 def CarNetPost(session, url_base, command):
     print(command)
-    r = session.post(url_base + command, headers=request_headers)
+    r = session.post(url_base + command, headers=request_headers, verify=certverify)
     return r.text
 
 
 def CarNetPostAction(session, url_base, command, data):
     print(command)
-    r = session.post(url_base + command, json=data, headers=request_headers)
+    r = session.post(url_base + command, json=data, headers=request_headers, verify=certverify)
     return r.text
 
 def CarNetCheckSecurityLevel(session, url_base, data):
@@ -293,8 +290,16 @@ def CarNetCheckSecurityLevel(session, url_base, data):
     else:
         cc = 'en'
     url = portal_base_url + '/portal/group/' + cc + '/edit-profile/-/profile/check-security-level'
-    r = session.post(url, json=data, headers=request_headers)
-    return r.text
+    response = session.post(url, json=data, headers=request_headers, verify=certverify)
+    if response.status_code != 200:
+        return false, 'Check security failed, HTTP response ' + response.status_code
+    json_data = response.json()
+    errCd = json_data['errorCode']
+    if errCd == "0":
+        return True, 'You are authorized for PIN action' 
+    if errCd == "1" or errCd == "2":
+       return False, 'You are not authorized for PIN action'
+    return False, 'Check security failed'
 
 
 def retrieveCarNetInfo(session, url_base):
@@ -464,16 +469,17 @@ def getWindowMelt(session, url_base):
     return 0
 
 def remoteLock(session, url_base, spin, vin):
-    # untested
     post_data = {
         'vin': vin, 
         'operationId': 'LOCK',
         'serviceId': 'rlu_v1' }
-    print(CarNetCheckSecurityLevel(session, url_base, post_data))
-    
-    post_data = {
-        'spin': str(spin) }
-    print(CarNetPostAction(session, url_base, '/-/vsr/remote-lock', post_data))
+    res, msg = CarNetCheckSecurityLevel(session, url_base, post_data)
+    if res:
+        post_data = {
+            'spin': str(spin) }
+        print(CarNetPostAction(session, url_base, '/-/vsr/remote-lock', post_data))
+    else:	
+        print(msg)
     return 0
 
 def remoteUnlock(session, url_base, spin, vin):
@@ -481,11 +487,14 @@ def remoteUnlock(session, url_base, spin, vin):
         'vin': vin, 
         'operationId': 'UNLOCK',
         'serviceId': 'rlu_v1' }
-    print(CarNetCheckSecurityLevel(session, url_base, post_data))
+    res, msg = CarNetCheckSecurityLevel(session, url_base, post_data)
 
-    post_data = {
-        'spin': str(spin) }
-    print(CarNetPostAction(session, url_base, '/-/vsr/remote-unlock', post_data))
+    if res:
+        post_data = {
+            'spin': str(spin) }
+        print(CarNetPostAction(session, url_base, '/-/vsr/remote-unlock', post_data))
+    else:	
+        print(msg)
     return 0
 
 def startRemoteAccessVentilation(session, url_base, spin, vin):
@@ -493,12 +502,15 @@ def startRemoteAccessVentilation(session, url_base, spin, vin):
         'vin': vin, 
         'operationId':'P_QSACT',
         'serviceId':'rheating_v1' }
-    print(CarNetCheckSecurityLevel(session, url_base, post_data))
+    res, msg = CarNetCheckSecurityLevel(session, url_base, post_data)
 
-    post_data = {
-        'startMode':'VENTILATION',
-        'spin': str(spin) }
-    print(CarNetPostAction(session, url_base, '/-/rah/quick-start', post_data))
+    if res:
+        post_data = {
+            'startMode':'VENTILATION',
+            'spin': str(spin) }
+        print(CarNetPostAction(session, url_base, '/-/rah/quick-start', post_data))
+    else:	
+        print(msg)
     return 0
 
 def stopRemoteAccessVentilation(session, url_base):
@@ -510,12 +522,15 @@ def startRemoteAccessHeating(session, url_base, spin, vin):
         'vin': vin, 
         'operationId':'P_QSACT',
         'serviceId':'rheating_v1' }
-    print(CarNetCheckSecurityLevel(session, url_base, post_data))
+    res, msg = CarNetCheckSecurityLevel(session, url_base, post_data)
 
-    post_data = {
-        'startMode':'HEATING',
-        'spin': str(spin) }
-    print(CarNetPostAction(session, url_base, '/-/rah/quick-start', post_data))
+    if res:
+        post_data = {
+            'startMode':'HEATING',
+            'spin': str(spin) }
+        print(CarNetPostAction(session, url_base, '/-/rah/quick-start', post_data))
+    else:	
+        print(msg)
     return 0
 
 def stopRemoteAccessHeating(session, url_base):
@@ -538,39 +553,15 @@ def getGeofences(session, url_base):
     print(CarNetPost(session, url_base, '/-/geofence/get-fences'))
     return 0
 
-def mqtt(s,url_base):
-    MQTT.mqttc.publish(MQTT_TOPIC + '/vehicles-owners-verification', CarNetPost(s,'https://www.portal.volkswagen-we.com/portal/group/de/edit-profile','/-/profile/get-vehicles-owners-verification'), qos=0, retain=True)
-    #MQTT.mqttc.publish(MQTT_TOPIC + '/request-vsr', CarNetPost(s,url_base, '/-/vsr/request-vsr'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/new-messages', CarNetPost(s,url_base, '/-/msgc/get-new-messages'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/vsr', CarNetPost(s,url_base, '/-/vsr/get-vsr'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/location', CarNetPost(s,url_base, '/-/cf/get-location'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/vehicle-details', CarNetPost(s,url_base, '/-/vehicle-info/get-vehicle-details'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/emanager', CarNetPost(s,url_base, '/-/emanager/get-emanager'), qos=0, retain=True)
-    #MQTT.mqttc.publish(MQTT_TOPIC + '/request-status', CarNetPost(s,url_base, '/-/rah/get-request-status'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/status', CarNetPost(s,url_base, '/-/rah/get-status'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/destination', CarNetPost(s,url_base, '/-/dimp/get-destinations'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/tours', CarNetPost(s,url_base, '/-/dimp/get-tours'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/news', CarNetPost(s,url_base, '/-/news/get-news'), qos=0, retain=True)
-    #MQTT.mqttc.publish(MQTT_TOPIC + '/latest-trip-statistics', CarNetPost(s,url_base, '/-/rts/get-latest-trip-statistics'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/car-details', CarNetPost(s,url_base, '/-/mainnavigation/load-car-details/WVWZZZ3HZJE506705'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/preferred-dealer', CarNetPost(s,url_base, '/-/mainnavigation/get-preferred-dealer'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/ppoi-list', CarNetPost(s,url_base, '/-/ppoi/get-ppoi-list'), qos=0, retain=True)
-    MQTT.mqttc.publish(MQTT_TOPIC + '/fences', CarNetPost(s,url_base, '/-/geofence/get-fences'), qos=0, retain=True)
-    return 0
-
 if __name__ == '__main__':
-
-    # Init MQTT connections
-    MQTT.init()
- 
     # parse arguments
     parser = argparse.ArgumentParser(description='Control your Connected VW.')
     parser.add_argument('-u', '--user', required=True, help='Your WE-Connect user id.')
     parser.add_argument('-p', '--password', required=True, help='Your WE-Connect password.')
     parser.add_argument('-v', '--vin', help='Your car VIN if more cars on account.')
-    parser.add_argument('-c', '--command', choices=['startCharge', 'stopCharge', 'getCharge', 'startClimate', 'stopClimate', 'getClimate', 'startWindowMelt', 'stopWindowMelt','getWindowMelt', 'getVIN', 'remoteLock', 'remoteUnlock', 'startRemoteVentilation', 'stopRemoteVentilation', 'startRemoteHeating', 'stopRemoteHeating', 'getRemoteHeating', 'getLatestReport', 'getAlerts', 'getGeofences', 'mqtt'], help='Command to send.')
+    parser.add_argument('-c', '--command', choices=['startCharge', 'stopCharge', 'getCharge', 'startClimate', 'stopClimate', 'getClimate', 'startWindowMelt', 'stopWindowMelt','getWindowMelt', 'getVIN', 'remoteLock', 'remoteUnlock', 'startRemoteVentilation', 'stopRemoteVentilation', 'startRemoteHeating', 'stopRemoteHeating', 'getRemoteHeating', 'getLatestReport', 'getAlerts', 'getGeofences'], help='Command to send.')
     parser.add_argument('-s', '--spin', help='Your WE-Connect s-pin needed for some commands.')
-    parser.add_argument('-i', '--index', type=int, default=0, choices=range(0, 9), help='To get the VIN for the N-th car.')
+    parser.add_argument('-i', '--index', type=int, default=0, choices=range(0, 10), help='To get the VIN for the N-th car.')
     parser.add_argument('-d', '--debug', action="store_true", help='Show debug commands.')
     args = parser.parse_args()
     CARNET_USERNAME = args.user
@@ -607,7 +598,7 @@ if __name__ == '__main__':
         print('Failed to login', msg)
         sys.exit()
         
-    # If a VIN is specified, put that in the base URL so more than just first car can be controlled (not tested)    
+    # If a VIN is specified, put that in the base URL so more than just first car can be controlled    
     if CARNET_VIN:
         vin_start = url.rfind('/',1,-2)
         url = url[0:vin_start+1] + CARNET_VIN + '/'
@@ -619,7 +610,8 @@ if __name__ == '__main__':
 	
     # We need to load a car is spin commands are used
     if CARNET_SPIN:
-        print(CarNetPost(session, url, '/-/mainnavigation/load-car-details/' + CARNET_VIN))
+        response = CarNetPost(session, url, '/-/mainnavigation/load-car-details/' + CARNET_VIN)
+        if debug: print(response)	
     
     if CARNET_COMMAND == 'startCharge':
         startCharge(session, url)
@@ -661,8 +653,6 @@ if __name__ == '__main__':
         getGeofences(session, url)
     elif CARNET_COMMAND == 'getAlerts':
         getAlerts(session, url)
-    elif CARNET_COMMAND == 'mqtt':
-        mqtt(session, url)
     else:
         retrieveCarNetInfo(session, url)
 
@@ -688,5 +678,6 @@ if __name__ == '__main__':
     #print(CarNetPost(session, url, '/-/vsr/get-request-status'))
 	
     # End session properly
-    print(CarNetPost(session, url, '/-/logout/revoke'))
+    response = CarNetPost(session, url, '/-/logout/revoke')
+    if debug: print(response)	
     
