@@ -13,31 +13,39 @@ MQTT_PORT = <port> <- port of your mqtt service, default is 1883
 
 # Usage
 
-Run the script with arguments. If you only own one car in VW we, the vin parameter is obsolete. The following are supported:
-```
-python3 we_connect_client.py -u <username> -p <password> -s <spin> -v <vin> -c retrieveCarNetInfo
-```
+Run the script with arguments. If you only own one car in VW we, the vin parameter is obsolete. The following commands are supported:
+
+* startCharge
+* stopCharge
+* getCharge
+* startClimat
+* startClimate
+* stopClimat
+* stopClimate
+* getClimat
+* getClimate
+* startWindowMelt
+* stopWindowMelt
+* getWindowMelt
+* getVIN
+* remoteLock
+* remoteUnlock
+* startRemoteVentilation
+* stopRemoteVentilation
+* startRemoteHeating
+* stopRemoteHeating
+* getRemoteHeating
+* getLatestReport    
+* getGeofences
+* getAlerts
+* retrieveCarNetInfo
 
 ```
-python3 we_connect_client.py  -u <username> -p <password> -s <spin> -v <vin> -c startClimat
+python3 we_connect_client.py -u <username> -p <password> -s <spin> -v <vin> -c <command>
 ```
 
-```
-python3 we_connect_client.py  -u <username> -p <password> -s <spin> -v <vin> -c stopClimat
-```
+# Send all data to the MQTT broker configured in lib_mqtt:
 
-```
-python3 we_connect_client.py  -u <username> -p <password> -s <spin> -v <vin> -c startWindowMelt
-```
-
-```
-python3 we_connect_client.py  -u <username> -p <password> -s <spin> -v <vin> -c stopWindowMelt
-```
-
-...
-(see code for more options)
-
-Send all data to the MQTT broker configured in lib_mqtt:
 To allow this, I placed a new file called my-car.py to the original repository from reneboer. It reuses all functions from we_connect_client but adds one new command: mqtt.
 ```
 python3 my-car.py -u <username> -p <password> -s <spin> -v <vin> -c mqtt
