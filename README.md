@@ -16,7 +16,7 @@ MQTT_PORT = <port> <- port of your mqtt service, default is 1883
 Run the script with arguments. If you only own one car in VW we, the vin parameter is obsolete.
 
 ```
-python3 we_connect_client.py -u <username> -p <password> -s <spin> -v <vin> -c <command>
+python3 we_connect_client.py -u <username> -p <password> [-s <spin>] [-v <vin>] -c <command> [-d]
 ```
 
 Add -d for debugging output to the console if needed.
@@ -36,11 +36,11 @@ The following commands are supported:
 * stopWindowMelt
 * getWindowMelt
 * getVIN
-* remoteLock
-* remoteUnlock
-* startRemoteVentilation
+* remoteLock [spin parameter needed, availability is country-depending]
+* remoteUnlock [spin parameter needed, availability is country-depending]
+* startRemoteVentilation [spin parameter needed]
 * stopRemoteVentilation
-* startRemoteHeating
+* startRemoteHeating [spin parameter needed]
 * stopRemoteHeating
 * getRemoteHeating
 * getLatestReport    
@@ -57,4 +57,10 @@ python3 my-car.py -u <username> -p <password> -s <spin> -v <vin> -c mqtt
 If you like, you can use my-car.py for all commands including the above - it will forward everything besides mqtt to the original code.
 See also [FHEM integration](https://forum.fhem.de/index.php/topic,83090.msg886586.html#msg886586)
 
+#Credits
+
 All this is possible due to the excellent work of reneboer and wez3. See details in his repository [here](https://github.com/reneboer/python-carnet-client)
+
+# Known issues
+
+Calling startRemoteVentilation does not switch the car from heating to ventilation mode. It is not yet clear what makes the car switch over to the ventilation mode. Suggestions are welcome.
