@@ -11,6 +11,18 @@ MQTT_HOST = "<hostname or IP>" <- host where your mqtt broker runs
 MQTT_PORT = <port> <- port of your mqtt service, default is 1883
 ```
 
+Install requests and paho-mqtt:
+
+```
+pip install requests paho-mqtt
+```
+or for Python3:
+```
+pip3 install requests paho-mqtt
+```
+
+
+
 # Usage
 
 Run the script with arguments. If you only own one car in VW we, the vin parameter is obsolete.
