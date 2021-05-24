@@ -1,3 +1,7 @@
+# BREAKING NEWS
+
+This does no longer work. I recommend to use the we-connect plugin for iobroker - that's still working.
+
 # Python Volkswagen CarNet Client
 
 This is a Python client for Volkswagen CarNet - aka VW We Connect -, it simulates the behaviour of the CarNet web page. It allows users to retrieve information about the vehicle (such as location, temperature and mileage), next to this the Window melt and Climat functionalities can be started from the Python script. This was built based on work from wez3 and reneboer.
